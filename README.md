@@ -1,1 +1,1 @@
-# LAMMPSScriptGen
+# LAMMPScriptGen

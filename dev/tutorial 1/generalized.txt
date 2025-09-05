@@ -1,0 +1,50 @@
+# Initialization
+units           ${unit_style}
+dimension       3
+boundary        p p p
+atom_style      ${atom_style}      # atomic, molecular, charge, etc.
+
+# Atom placement (if crystalline)
+lattice         ${lattice_type} ${lattice_constant}
+region          box block 0 1 0 1 0 1 units lattice
+create_box      ${n_types} box
+create_atoms    ${placement_command}
+
+# Or, for non-crystalline or molecular systems:
+# read_data      ${data_file}
+
+# Masses
+mass            ${type_id} ${mass_value}
+
+# Potentials
+pair_style      ${pair_style} ${pair_style_args}
+pair_coeff      * * ${potential_file} ${element_symbols}
+
+# Optional bonds/angles for molecules
+# bond_style     ${bond_style}
+# angle_style    ${angle_style}
+
+# Computes
+compute         eng all pe/atom
+compute         eatoms all reduce sum c_eng
+
+# Relaxation or MD
+reset_timestep  0
+{% if do_minimization %}
+  fix           1 all box/relax iso ${pressure_target} vmax ${vmax}
+  thermo ${thermo_freq}
+  thermo_style custom step pe lx ly lz press pxx pyy pzz c_eatoms
+  min_style     ${min_style}
+  minimize      ${etol} ${ftol} ${maxiter} ${maxeval}
+{% else %}
+  fix           1 all npt temp ${temp} ${temp} ${tdamp} iso ${pressure_target} ${pressure_target} ${pdamp}
+  run           ${nsteps}
+{% endif %}
+
+# Extract and print results
+variable        natoms  equal "count(all)"
+variable        teng    equal "c_eatoms"
+variable        length  equal "lx"
+variable        ecoh    equal "v_teng/v_natoms"
+print           "Equilibrium lattice constant = ${length}"
+print           "Cohesive energy = ${ecoh}"
